@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: whatsapp-server
+    env: node
+    region: ohio
+    plan: free
+    branch: main
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4320
+      - key: WHATSAPP_API_KEY
+        sync: false
