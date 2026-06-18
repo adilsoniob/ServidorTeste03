@@ -16,24 +16,58 @@ export function createApp(whatsapp) {
   app.use(cors());
   app.use(express.json());
 
-  // Locals ficam acessíveis em todas as rotas via req.app.locals
   app.locals.whatsapp = whatsapp;
 
-  // Painel admin + API de monitoramento (público, acessível via /admin)
+  // Admin + monitoring API
   app.use("/", createAdminRouter(whatsapp));
 
-  // Rotas públicas (sem auth) — úteis para monitoramento
+  // Public routes
   app.use("/", qrPageRouter);
   app.use("/health", healthRouter);
   app.use("/api/whatsapp/status", statusRouter);
 
-  // Rotas autenticadas (Bearer token)
+  // Autenticated routes
   app.use("/api/send-message", authMiddleware, sendMessageRouter);
   app.use("/api/whatsapp/reconnect", authMiddleware, reconnectRouter);
   app.use("/api/whatsapp/disconnect", authMiddleware, disconnectRouter);
 
-  // 404 + error handler globais
-  app.use((_req, res) => res.status(404).json({ success: false, error: "Rota não encontrada." }));
+  // Multi-account routes (autenticadas)
+  app.post("/api/account/:index/connect", authMiddleware, (req, res) => {
+    const index = parseInt(req.params.index, 10);
+    whatsapp.connectAccount(index);
+    res.json({ success: true, message: `Solicita��o de conex�o enviada para conta ${index}.` });
+  });
+
+  app.post("/api/account/:index/reconnect", authMiddleware, (req, res) => {
+    const index = parseInt(req.params.index, 10);
+    whatsapp.reconnectAccount(index);
+    res.json({ success: true, message: `Solicita��o de reconex�o enviada para conta ${index}.` });
+  });
+
+  app.post("/api/account/:index/disconnect", authMiddleware, (req, res) => {
+    const index = parseInt(req.params.index, 10);
+    whatsapp.disconnectAccount(index);
+    res.json({ success: true, message: `Solicita��o de desconex�o enviada para conta ${index}.` });
+  });
+
+  app.post("/api/account/:index/remove", authMiddleware, (req, res) => {
+    const index = parseInt(req.params.index, 10);
+    whatsapp.removeAccount(index);
+    res.json({ success: true, message: `Sess�o da conta ${index} removida.` });
+  });
+
+  app.get("/api/accounts", (req, res) => {
+    const accounts = whatsapp.getAccounts();
+    res.json({ success: true, accounts });
+  });
+
+  app.get("/api/admin/stats", (req, res) => {
+    const stats = whatsapp.storage?.getMessageStats() || {};
+    res.json({ success: true, stats });
+  });
+
+  // 404 + error handler
+  app.use((_req, res) => res.status(404).json({ success: false, error: "Rota n�o encontrada." }));
   app.use((err, _req, res, _next) => {
     console.error("[express-error]", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor." });

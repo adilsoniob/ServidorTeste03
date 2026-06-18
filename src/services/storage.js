@@ -32,36 +32,52 @@ export class Storage {
     ensureDir();
   }
 
-  // ---------- Messages ----------
-
   addMessage(entry) {
     const messages = readJSON(this.messagesPath) || [];
     messages.push({
       id: entry.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       to: entry.to,
+      account: entry.account ?? 0,
       status: entry.status || "sent",
       timestamp: entry.timestamp || new Date().toISOString(),
       source: entry.source || "api",
     });
     writeJSON(this.messagesPath, messages);
-    this._updateContact(entry.to, entry.status || "sent");
+    this._updateContact(entry.to, entry.status || "sent", entry.account ?? 0);
     return messages[messages.length - 1];
   }
 
-  updateMessageStatus(to, status) {
+  updateMessageStatus(to, status, account = 0) {
     const messages = readJSON(this.messagesPath) || [];
-    const updated = [];
+    let changed = false;
     for (const msg of messages) {
-      if (msg.to === to && msg.status !== "failed") {
+      if (msg.to === to && (msg.account === account) && msg.status !== "failed") {
         msg.status = status;
-        updated.push(msg);
+        changed = true;
       }
     }
-    if (updated.length) writeJSON(this.messagesPath, messages);
+    if (changed) writeJSON(this.messagesPath, messages);
   }
 
-  getMessages(limit = 100) {
-    const messages = readJSON(this.messagesPath) || [];
+  getMessages(limit = 100, filters = {}) {
+    let messages = readJSON(this.messagesPath) || [];
+    if (filters.account !== undefined) {
+      messages = messages.filter((m) => m.account === filters.account);
+    }
+    if (filters.status) {
+      messages = messages.filter((m) => m.status === filters.status);
+    }
+    if (filters.phone) {
+      messages = messages.filter((m) => m.to === filters.phone);
+    }
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom).getTime();
+      messages = messages.filter((m) => new Date(m.timestamp).getTime() >= from);
+    }
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo).getTime();
+      messages = messages.filter((m) => new Date(m.timestamp).getTime() <= to);
+    }
     return messages.slice(-limit).reverse();
   }
 
@@ -70,15 +86,30 @@ export class Storage {
     return messages.filter((m) => m.to === phone).reverse();
   }
 
-  // ---------- Contacts ----------
+  getMessageStats() {
+    const messages = readJSON(this.messagesPath) || [];
+    return {
+      total: messages.length,
+      byStatus: messages.reduce((acc, m) => {
+        acc[m.status] = (acc[m.status] || 0) + 1;
+        return acc;
+      }, {}),
+      byAccount: messages.reduce((acc, m) => {
+        const key = `account_${m.account}`;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {}),
+    };
+  }
 
-  _updateContact(phone, status) {
+  _updateContact(phone, status, account = 0) {
     const contacts = readJSON(this.contactsPath) || {};
-    const existing = contacts[phone] || { phone, count: 0, lastStatus: "", lastSendAt: null };
+    const key = `${account}_${phone}`;
+    const existing = contacts[key] || { phone, account, count: 0, lastStatus: "", lastSendAt: null };
     existing.count += 1;
     existing.lastStatus = status;
     existing.lastSendAt = new Date().toISOString();
-    contacts[phone] = existing;
+    contacts[key] = existing;
     writeJSON(this.contactsPath, contacts);
   }
 
@@ -90,8 +121,6 @@ export class Storage {
       return new Date(b.lastSendAt) - new Date(a.lastSendAt);
     });
   }
-
-  // ---------- Session ----------
 
   saveSession(data) {
     writeJSON(this.sessionPath, {
@@ -108,21 +137,33 @@ export class Storage {
     try { fs.unlinkSync(this.sessionPath); } catch {}
   }
 
-  // ---------- Logs ----------
-
   addLog(event, description, data = {}) {
     const logs = readJSON(this.logsPath) || [];
     logs.push({
       event,
       description,
-      data,
+      data: { ...data, account: data.account ?? 0 },
       timestamp: new Date().toISOString(),
     });
     writeJSON(this.logsPath, logs);
   }
 
-  getLogs(limit = 200) {
-    const logs = readJSON(this.logsPath) || [];
+  getLogs(limit = 200, filters = {}) {
+    let logs = readJSON(this.logsPath) || [];
+    if (filters.account !== undefined) {
+      logs = logs.filter((l) => (l.data?.account ?? 0) === filters.account);
+    }
+    if (filters.event) {
+      logs = logs.filter((l) => l.event === filters.event);
+    }
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom).getTime();
+      logs = logs.filter((l) => new Date(l.timestamp).getTime() >= from);
+    }
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo).getTime();
+      logs = logs.filter((l) => new Date(l.timestamp).getTime() <= to);
+    }
     return logs.slice(-limit).reverse();
   }
 }

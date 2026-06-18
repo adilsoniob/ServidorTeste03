@@ -21,4 +21,6 @@ export const config = {
   reconnectBaseDelayMs: parseInt(process.env.RECONNECT_BASE_DELAY_MS || "8000", 10),
   // Pasta da sessão WhatsApp (suporta SESSION_FOLDER para Railway)
   sessionFolder: process.env.SESSION_FOLDER || "./session",
+  // Número máximo de contas simultâneas
+  maxAccounts: parseInt(process.env.MAX_ACCOUNTS || "5", 10),
 };

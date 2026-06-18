@@ -34,7 +34,7 @@ server.listen(config.port, () => {
   });
 });
 
-whatsapp.initialize();
+whatsapp.initializeAll();
 
 // Graceful shutdown
 let shuttingDown = false;
