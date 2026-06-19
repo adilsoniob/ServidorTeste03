@@ -36,6 +36,8 @@ async function getDb() {
   `);
   db.run("CREATE INDEX IF NOT EXISTS idx_queue_status ON message_queue(status)");
   db.run("CREATE INDEX IF NOT EXISTS idx_queue_priority ON message_queue(priority, created_at)");
+  try { db.run("ALTER TABLE message_queue ADD COLUMN account INTEGER"); } catch {}
+  db.run("CREATE INDEX IF NOT EXISTS idx_queue_account ON message_queue(account)");
   _save();
   return db;
 }
@@ -63,15 +65,16 @@ export async function enqueue(phone, message, metadata = {}) {
   return id;
 }
 
-export async function dequeue(limit = 1) {
+export async function dequeue(limit = 1, account) {
   const d = await getDb();
+  const ts = nowISO();
   const rows = d.exec(
     `SELECT id, phone, message, metadata, retry_count, max_retries, created_at
      FROM message_queue
-     WHERE status = 'pending'
+     WHERE status = 'pending' ${account !== undefined ? "AND (account IS NULL OR account = ?)" : ""}
      ORDER BY priority DESC, created_at ASC
      LIMIT ?`,
-    [limit]
+    account !== undefined ? [account, limit] : [limit]
   );
   if (!rows.length || !rows[0].values.length) return [];
   const items = rows[0].values.map((row) => ({
@@ -84,10 +87,18 @@ export async function dequeue(limit = 1) {
     created_at: row[6],
   }));
   const ids = items.map((r) => r.id);
-  const ts = nowISO();
-  d.run(`UPDATE message_queue SET status = 'processing', updated_at = ? WHERE id IN (${ids.map(() => "?").join(",")})`, [ts, ...ids]);
+  d.run(`UPDATE message_queue SET status = 'processing', account = ?, updated_at = ? WHERE id IN (${ids.map(() => "?").join(",")})`, [account ?? -1, ts, ...ids]);
   _save();
   return items;
+}
+
+export async function reassignByAccount(fromAccount) {
+  const d = await getDb();
+  const ts = nowISO();
+  d.run("UPDATE message_queue SET status = 'pending', account = NULL, last_error = 'reassign', updated_at = ? WHERE status = 'processing' AND account = ?", [ts, fromAccount]);
+  const count = d.getRowsModified();
+  if (count > 0) log.warn("[queue] Reatribuído", { fromAccount, count });
+  return count;
 }
 
 export async function complete(id) {

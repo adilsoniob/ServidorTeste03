@@ -60,7 +60,7 @@ export class WhatsAppSession {
     this._processingQueue = false;
     this._queueWorkerTimer = null;
     this._queueProcessing = false;
-    this.stealth = new Stealth(config.stealth);
+    this.stealth = new Stealth(config.stealth, this.index);
   }
 
   get accountLabel() {
@@ -205,6 +205,7 @@ export class WhatsAppSession {
 
   async _tryDequeue() {
     if (this._queueProcessing || !this.isReady() || this._destroyed) return;
+    if (!this.stealth.multi.isHealthy()) return;
     if (this.stealth.enabled && !this.stealth.scheduler.isWithinBusinessHours()) return;
     this._queueProcessing = true;
     try {
@@ -215,7 +216,7 @@ export class WhatsAppSession {
         const wait = 60000 - (now - oldest);
         if (wait > 1000) return;
       }
-      const items = await queue.dequeue(1);
+      const items = await queue.dequeue(1, this.index);
       for (const item of items) {
         await this.sendFromQueue(item.id, item.phone, item.message);
       }
@@ -349,6 +350,7 @@ export class WhatsAppSession {
       this.emit("connected");
       log.info(`[${this.accountLabel}] WhatsApp conectado e pronto`);
       this._addLog("connected", "WhatsApp conectado e pronto");
+      this.stealth.multi.markHealthy();
       this._startQueueWorker();
 
       try {
@@ -385,7 +387,10 @@ export class WhatsAppSession {
       this.emit("disconnected", { reason, account: this.index });
       log.warn(`[${this.accountLabel}] WhatsApp desconectado`, { reason });
       this._addLog("disconnected", `WhatsApp desconectado: ${reason}`, { reason });
-      if (reason !== "LOGOUT") {
+      if (this.stealth.multi.isBlockEvent(reason)) {
+        this.stealth.multi.handleBlock(reason);
+        this._setStatus(STATES.ERROR, `Conta bloqueada: ${reason}`);
+      } else if (reason !== "LOGOUT") {
         this._scheduleAutoReconnect("disconnected");
       }
     });
@@ -394,7 +399,11 @@ export class WhatsAppSession {
       this._setStatus(STATES.AUTH_FAILURE, `Falha de autenticação: ${msg}`);
       log.error(`[${this.accountLabel}] Falha de autenticação`, { message: msg });
       this._addLog("auth_failure", `Falha de autenticação: ${msg}`, { message: msg });
-      this._scheduleAutoReconnect("auth_failure", 5000);
+      if (this.stealth.multi.isBlockEvent("", msg)) {
+        this.stealth.multi.handleBlock(msg);
+      } else {
+        this._scheduleAutoReconnect("auth_failure", 5000);
+      }
     });
 
     const stripSuffix = (s) => {
