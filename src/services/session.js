@@ -25,14 +25,7 @@ const PUPPETEER_ARGS = [
   "--no-first-run",
   "--no-zygote",
   "--disable-gpu",
-  "--disable-extensions",
-  "--disable-background-networking",
-  "--disable-default-apps",
-  "--disable-sync",
-  "--disable-translate",
   "--mute-audio",
-  "--disable-features=IsolateOrigins,site-per-process",
-  "--user-agent=Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.140 Mobile Safari/537.36",
 ];
 
 const withTimeout = (promise, ms, label) =>
@@ -233,7 +226,6 @@ export class WhatsAppSession {
     return new Client({
       authStrategy: new LocalAuth({ clientId: this.config.clientId + "-" + this.index }),
       puppeteer: { headless: true, args: PUPPETEER_ARGS, protocolTimeout: 120_000 },
-      webVersionCache: { type: "remote", remotePath: "https://raw.githubusercontent.com/wppconnectteam/wa-version/main/html/2.2412.54.html" },
     });
   }
 
@@ -280,10 +272,13 @@ export class WhatsAppSession {
         if (info) {
           this.profileName = info.pushname || info.name || null;
           this.profileNumber = info.wid?.user || info.me?.user || null;
+          log.info(`[${this.accountLabel}] Perfil carregado`, { name: this.profileName, number: this.profileNumber });
           try {
             const picUrl = await client.getProfilePicUrl(info.wid._serialized);
             this.profilePic = picUrl || null;
-          } catch {}
+          } catch (e) {
+            log.warn(`[${this.accountLabel}] Falha ao obter foto do perfil`, { error: e.message });
+          }
           this.storage?.saveSession({
             account: this.index,
             label: this.accountLabel,
@@ -291,8 +286,12 @@ export class WhatsAppSession {
             profileNumber: this.profileNumber,
             connectedAt: this.connectedAt,
           });
+        } else {
+          log.warn(`[${this.accountLabel}] client.info veio vazio`);
         }
-      } catch {}
+      } catch (e) {
+        log.error(`[${this.accountLabel}] Erro ao carregar perfil`, { error: e.message });
+      }
     });
 
     client.on("disconnected", (reason) => {
@@ -319,6 +318,16 @@ export class WhatsAppSession {
     };
 
     const isValidPhone = (s) => s && s.length >= 10 && /^\d+$/.test(s) && !s.startsWith("0");
+
+    client.on("error", (err) => {
+      const msg = String(err?.message || err || "");
+      log.error(`[${this.accountLabel}] Erro no cliente WhatsApp`, { error: msg });
+      this._addLog("client_error", msg, { error: msg });
+      if (msg.includes("encryptMsgProtobuf") || msg.includes("nextMsgIndex")) {
+        log.warn(`[${this.accountLabel}] Erro de criptografia detectado — agendando reconexão`);
+        this._scheduleAutoReconnect("encrypt_error", 5000);
+      }
+    });
 
     client.on("message_ack", (msg, ack) => {
       const statusMap = { 1: "sent", 2: "received", 3: "read" };
