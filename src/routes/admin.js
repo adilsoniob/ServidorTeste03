@@ -348,7 +348,15 @@ function api(url, opts) {
   opts = opts || {};
   opts.headers = opts.headers || {};
   if (opts.body) { opts.body = JSON.stringify(opts.body); opts.headers["Content-Type"] = "application/json" }
-  return fetch(url, opts).then(function(r) { return r.json() }).catch(function() { return { success: false, error: "Erro de conexão" } });
+  return fetch(url, opts).then(function(r) {
+    if (!r.ok) return { success: false, error: "HTTP " + r.status };
+    return r.json();
+  }).catch(function(e) { return { success: false, error: String(e) } });
+}
+
+function showError(msg) {
+  var el = byId("topStatusText");
+  if (el) el.innerHTML = '<span style="color:var(--red)">⚠ ' + esc(msg) + '</span>';
 }
 
 function esc(s) { if (!s) return ""; var d = document.createElement("div"); d.textContent = s; return d.innerHTML }
@@ -491,31 +499,29 @@ qa("#mainTabs .tab").forEach(function(tab) {
 
 async function fetchDashboard() {
   var data = await api("/api/admin/dashboard");
-  if (data.success) {
-    renderKPI(data);
-    var dot = byId("topStatusDot");
-    var txt = byId("topStatusText");
-    var state = (data.accounts && data.accounts.connected > 0) ? "connected" : (data.accounts && data.accounts.total > 0) ? "offline" : "starting";
-    dot.className = "status-dot " + statusDot(state);
-    txt.textContent = data.accounts ? (data.accounts.connected + " de " + data.accounts.total + " contas conectadas") : "Carregando...";
-    byId("topUptime").textContent = data.uptimeSeconds ? Math.floor(data.uptimeSeconds / 60) + "min online" : "";
-  }
+  if (!data.success) { showError("Dashboard: " + (data.error || "sem resposta")); return }
+  renderKPI(data);
+  var dot = byId("topStatusDot");
+  var txt = byId("topStatusText");
+  var state = (data.accounts && data.accounts.connected > 0) ? "connected" : (data.accounts && data.accounts.total > 0) ? "offline" : "starting";
+  dot.className = "status-dot " + statusDot(state);
+  txt.textContent = data.accounts ? (data.accounts.connected + " de " + data.accounts.total + " contas conectadas") : "Carregando...";
+  byId("topUptime").textContent = data.uptimeSeconds ? Math.floor(data.uptimeSeconds / 60) + "min online" : "";
   var d2 = await api("/api/admin/status");
-  if (d2.success && d2.accounts) {
-    renderAccounts(d2.accounts);
-    if (qrModalIndex >= 0) {
-      var acc = d2.accounts[qrModalIndex];
-      if (acc && acc.qr) {
-        byId("qrModalImg").src = acc.qr;
-        byId("qrModalImg").style.display = "";
-        byId("qrModalPlaceholder").style.display = "none";
-      }
-      if (acc && acc.state === "connected") {
-        toast("Conta " + (qrModalIndex + 1) + " conectada!", "success");
-        byId("qrModal").classList.remove("active");
-        qrModalIndex = -1;
-        if (qrTimer) { clearInterval(qrTimer); qrTimer = null }
-      }
+  if (!d2.success || !d2.accounts) { showError("Status: " + ((d2 && d2.error) || "sem dados")); return }
+  renderAccounts(d2.accounts);
+  if (qrModalIndex >= 0) {
+    var acc = d2.accounts[qrModalIndex];
+    if (acc && acc.qr) {
+      byId("qrModalImg").src = acc.qr;
+      byId("qrModalImg").style.display = "";
+      byId("qrModalPlaceholder").style.display = "none";
+    }
+    if (acc && acc.state === "connected") {
+      toast("Conta " + (qrModalIndex + 1) + " conectada!", "success");
+      byId("qrModal").classList.remove("active");
+      qrModalIndex = -1;
+      if (qrTimer) { clearInterval(qrTimer); qrTimer = null }
     }
   }
 }
