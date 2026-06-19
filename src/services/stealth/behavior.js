@@ -34,6 +34,25 @@ export class StealthBehavior {
     return false;
   }
 
+  async simulateTyping(client, phone) {
+    const st = this.opts.simulateTyping || {};
+    if (!cfg(st, "enabled", false)) return;
+    try {
+      const registered = await client.getNumberId(phone);
+      if (!registered) return;
+      const chatId = typeof registered === "object" && registered._serialized
+        ? registered._serialized : typeof registered === "string" && registered.includes("@")
+        ? registered : null;
+      if (!chatId) return;
+      const chat = await client.getChatById(chatId);
+      await chat.sendStateTyping();
+      const min = cfg(st, "min", 3000);
+      const max = cfg(st, "max", 7000);
+      await new Promise((r) => setTimeout(r, min + Math.random() * (max - min)));
+    } catch {
+    }
+  }
+
   get isOnPause() {
     return Date.now() < this._pauseUntil;
   }

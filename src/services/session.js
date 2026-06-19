@@ -115,7 +115,7 @@ export class WhatsAppSession {
   }
 
   async sendFromQueue(queueId, phone, message) {
-    const check = await this.stealth.beforeSend(phone);
+    const check = await this.stealth.beforeSend(phone, this.client);
     if (!check.allowed) {
       if (check.reason === "DAILY_LIMIT" || check.reason === "CONTACT_WINDOW") {
         await queue.revertToPending(queueId);
@@ -249,7 +249,7 @@ export class WhatsAppSession {
       try {
         await this._destroyClientSafely();
         await this._cleanupChromiumLocks();
-        const client = this._createClient();
+        const client = await this._createClient();
         this._attachHandlers(client);
         this.client = client;
         this._setStatus(STATES.STARTING, "Inicializando...");
@@ -300,13 +300,15 @@ export class WhatsAppSession {
     this._destroyClientSafely().catch(() => {});
   }
 
-  _createClient() {
+  async _createClient() {
+    const puppeteer = { headless: true, args: [...PUPPETEER_ARGS], protocolTimeout: 120_000 };
+    const cfg = await this.stealth.getPuppeteerConfig(puppeteer);
     return new Client({
       authStrategy: new LocalAuth({
         clientId: this.config.clientId + "-" + this.index,
         dataPath: "./data/.wwebjs_auth",
       }),
-      puppeteer: { headless: true, args: PUPPETEER_ARGS, protocolTimeout: 120_000 },
+      puppeteer: cfg,
     });
   }
 

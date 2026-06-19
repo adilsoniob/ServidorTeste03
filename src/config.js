@@ -31,5 +31,8 @@ export const config = {
     businessHours: { enabled: true, start: 8, end: 21, timezone: "America/Sao_Paulo" },
     dailyLimit: { enabled: true, max: 80 },
     contactWindow: { enabled: true, hours: 24 },
+    stealthPlugin: true,
+    userAgentRotation: true,
+    simulateTyping: { enabled: true, min: 3000, max: 7000 },
   },
 };
