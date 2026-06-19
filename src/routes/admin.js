@@ -325,13 +325,6 @@ tr:hover td{background:rgba(59,130,246,.04)}
 var qrModalIndex = -1;
 var qrTimer = null;
 
-window._refreshQR = refreshQR;
-window._cancelQR = cancelQR;
-window._addAccount = addAccount;
-window._retryAll = retryAll;
-window._clearCompleted = clearCompleted;
-window._fullRefresh = fullRefresh;
-
 function toast(msg, type) {
   var el = document.createElement("div");
   el.className = "toast-item toast-" + (type || "info");
@@ -478,6 +471,12 @@ window.cancelQR = function() {
 window._retryMsg = function(id) {
   api("/api/queue/retry/" + id, { method:"POST" }).then(function(d) { toast(d.message || "Reenfileirado", "info"); loadQueue() });
 }
+window._refreshQR = refreshQR;
+window._cancelQR = cancelQR;
+window._addAccount = addAccount;
+window._retryAll = retryAll;
+window._clearCompleted = clearCompleted;
+window._fullRefresh = fullRefresh;
 
 function openTab(id, el) {
   qa(".tab").forEach(function(t) { t.classList.remove("active") });
