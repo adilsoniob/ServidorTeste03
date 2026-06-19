@@ -1,6 +1,7 @@
 import { StealthBehavior } from "./behavior.js";
 import { StealthScheduler } from "./scheduler.js";
 import { MultiAccount } from "./multiaccount.js";
+import { StealthContent } from "./content.js";
 import { getRandomUserAgent } from "./agent.js";
 
 const cfg = (obj, key, fallback) => (obj && obj[key] !== undefined ? obj[key] : fallback);
@@ -10,6 +11,7 @@ export class Stealth {
     this.behavior = new StealthBehavior(opts);
     this.scheduler = new StealthScheduler(opts);
     this.multi = new MultiAccount(accountIndex);
+    this.content = new StealthContent(cfg(opts, "variacao", {}));
   }
 
   get enabled() {

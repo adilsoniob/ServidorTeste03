@@ -34,5 +34,6 @@ export const config = {
     stealthPlugin: true,
     userAgentRotation: true,
     simulateTyping: { enabled: true, min: 3000, max: 7000 },
+    variacao: { enabled: true, frequencia: 2, emoji: true, pontuacao: true },
   },
 };

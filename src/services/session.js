@@ -123,7 +123,8 @@ export class WhatsAppSession {
       }
       return { success: false, code: check.reason, error: check.message };
     }
-    const result = await this._doSend(phone, message);
+    const msgVariada = this.stealth.content.variar(message);
+    const result = await this._doSend(phone, msgVariada);
     if (result.success) {
       await queue.complete(queueId);
       this.stealth.afterSend(phone);
@@ -193,7 +194,7 @@ export class WhatsAppSession {
     while (this._msgQueue.length > 0) {
       const item = this._msgQueue.shift();
       const { cleanNumber, message, resolve } = item;
-      const result = await this._doSend(cleanNumber, message);
+      const result = await this._doSend(cleanNumber, this.stealth.content.variar(message));
       if (result.success) {
         this.storage?.addMessage({ to: cleanNumber, status: "sent", source: "api", id: result.messageId, account: this.index });
       }
