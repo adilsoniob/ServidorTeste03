@@ -53,12 +53,12 @@ function nowISO() {
 export async function enqueue(phone, message, metadata = {}) {
   const d = await getDb();
   const ts = nowISO();
-  d.run(
-    "INSERT INTO message_queue (phone, message, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  const result = d.exec(
+    "INSERT INTO message_queue (phone, message, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?) RETURNING id",
     [phone, message, JSON.stringify(metadata), ts, ts]
   );
   _save();
-  const id = d.exec("SELECT last_insert_rowid() as id")[0]?.values[0][0];
+  const id = result[0]?.values[0][0];
   log.info("[queue] Enfileirado", { id, phone: phone.slice(-8) });
   return id;
 }
