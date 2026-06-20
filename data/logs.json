@@ -1,0 +1,57 @@
+[
+  {
+    "event": "state_change",
+    "description": "Estado: starting -> error",
+    "data": {
+      "from": "starting",
+      "to": "error",
+      "message": "Erro na inicialização: Could not find Chrome (ver. 146.0.7680.31). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: C:\\Users\\Diihjcop\\.cache\\puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.",
+      "account": 0
+    },
+    "timestamp": "2026-06-20T14:24:32.648Z"
+  },
+  {
+    "event": "state_change",
+    "description": "Estado: error -> starting",
+    "data": {
+      "from": "error",
+      "to": "starting",
+      "message": "Inicializando...",
+      "account": 0
+    },
+    "timestamp": "2026-06-20T14:24:40.657Z"
+  },
+  {
+    "event": "state_change",
+    "description": "Estado: starting -> error",
+    "data": {
+      "from": "starting",
+      "to": "error",
+      "message": "Erro na inicialização: Could not find Chrome (ver. 146.0.7680.31). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: C:\\Users\\Diihjcop\\.cache\\puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.",
+      "account": 0
+    },
+    "timestamp": "2026-06-20T14:24:40.661Z"
+  },
+  {
+    "event": "state_change",
+    "description": "Estado: error -> starting",
+    "data": {
+      "from": "error",
+      "to": "starting",
+      "message": "Inicializando...",
+      "account": 0
+    },
+    "timestamp": "2026-06-20T14:24:56.676Z"
+  },
+  {
+    "event": "state_change",
+    "description": "Estado: starting -> error",
+    "data": {
+      "from": "starting",
+      "to": "error",
+      "message": "Erro na inicialização: Could not find Chrome (ver. 146.0.7680.31). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: C:\\Users\\Diihjcop\\.cache\\puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.",
+      "account": 0
+    },
+    "timestamp": "2026-06-20T14:24:56.679Z"
+  }
+]
