@@ -1106,7 +1106,7 @@ window.removeCampaignMsg = function(btn) {
 };
 
 byId("campaignNumbers").addEventListener("input", function() {
-  var lines = this.value.split("\n").filter(function(l) { return l.trim() });
+  var lines = this.value.split("\\n").filter(function(l) { return l.trim() });
   byId("campaignNumCount").textContent = lines.length;
 });
 
@@ -1121,7 +1121,7 @@ window.saveCampaign = async function() {
     var v = el.value.trim();
     if (v) messages.push(v);
   });
-  var numbers = numbersRaw.split("\n").map(function(l) { return l.trim() }).filter(function(l) { return l });
+  var numbers = numbersRaw.split("\\n").map(function(l) { return l.trim() }).filter(function(l) { return l });
   if (!name) { toast("Informe o nome da campanha", "error"); return; }
   if (!numbers.length) { toast("Informe pelo menos 1 numero", "error"); return; }
   if (numbers.length > 100) { toast("Maximo de 100 numeros", "error"); return; }
@@ -1180,15 +1180,15 @@ window.viewCampaign = async function(id) {
   if (!r.success || !r.campaign) return;
   var c = r.campaign;
   var s = statsR.stats || {};
-  var msg = "Campanha: " + c.name + "\n";
-  msg += "Status: " + c.status + "\n";
-  msg += "Total: " + c.total_numbers + " numeros\n";
-  msg += "Enviados: " + (s.sent || 0) + "\n";
-  msg += "Pendentes: " + (s.pending || 0) + "\n";
-  msg += "Erros: " + (s.error || 0) + "\n";
-  msg += "Delay: " + c.delay_min + "s - " + c.delay_max + "s\n";
-  if (s.estimatedCompletion) msg += "Tempo estimado: " + s.estimatedCompletion + "\n";
-  msg += "Mensagens: " + (c.messages || []).length + " modelos\n";
+  var msg = "Campanha: " + c.name + "\\n";
+  msg += "Status: " + c.status + "\\n";
+  msg += "Total: " + c.total_numbers + " numeros\\n";
+  msg += "Enviados: " + (s.sent || 0) + "\\n";
+  msg += "Pendentes: " + (s.pending || 0) + "\\n";
+  msg += "Erros: " + (s.error || 0) + "\\n";
+  msg += "Delay: " + c.delay_min + "s - " + c.delay_max + "s\\n";
+  if (s.estimatedCompletion) msg += "Tempo estimado: " + s.estimatedCompletion + "\\n";
+  msg += "Mensagens: " + (c.messages || []).length + " modelos\\n";
   alert(msg);
 };
 
