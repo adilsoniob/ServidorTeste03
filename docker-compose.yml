@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  whatsapp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp-server
+    ports:
+      - "4320:4320"
+    environment:
+      - NODE_ENV=development
+      - PORT=4320
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY:-VALE_SAUDE_2026}
+      - WHATSAPP_CLIENT_ID=vale-saude
+      - SESSION_FOLDER=./data/session
+      - AUTH_FOLDER=./data/.wwebjs_auth
+      - MAX_ACCOUNTS=1
+      - CORS_ORIGIN=*
+      - STEALTH_ENABLED=false
+      - SEND_TIMEOUT_MS=20000
+      - MAX_RECONNECT_ATTEMPTS=5
+      - RECONNECT_BASE_DELAY_MS=8000
+      - RATE_LIMIT_MAX_PER_MINUTE=20
+    volumes:
+      - whatsapp-session:/app/data/.wwebjs_auth
+      - whatsapp-data:/app/data
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4320/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  whatsapp-session:
+  whatsapp-data:

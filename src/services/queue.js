@@ -1,8 +1,9 @@
 import initSqlJs from "sql.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { log } from "../logger.js";
+import { config } from "../config.js";
 
-const DB_PATH = "./data/queue.db";
+const DB_PATH = config.sessionFolder.replace("/session", "") + "/queue.db";
 
 let db = null;
 let SQL = null;
@@ -12,7 +13,8 @@ let _dirty = false;
 
 async function getDb() {
   if (db) return db;
-  if (!existsSync("./data")) mkdirSync("./data", { recursive: true });
+  const dataDir = config.sessionFolder.replace("/session", "");
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
   SQL = await initSqlJs();
   if (existsSync(DB_PATH)) {
     const buffer = readFileSync(DB_PATH);

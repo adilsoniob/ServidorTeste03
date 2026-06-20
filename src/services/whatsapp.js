@@ -70,6 +70,20 @@ export class WhatsAppService {
     }
   }
 
+  async drainAllQueues() {
+    log.info("Iniciando drain de todas as filas...");
+    const promises = this.accounts.map(async (account) => {
+      if (account._stopQueueWorker) {
+        await account._stopQueueWorker();
+      }
+      if (account.drainQueue) {
+        await account.drainQueue();
+      }
+    });
+    await Promise.all(promises);
+    log.info("Todas as filas finalizadas");
+  }
+
   // -- Multi-account operations --
 
   async connectAccount(index) {

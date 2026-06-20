@@ -1,12 +1,11 @@
 services:
   - type: web
     name: whatsapp-server
-    env: node
+    env: docker
     region: ohio
     plan: free
     branch: main
-    buildCommand: npm install
-    startCommand: node src/index.js
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -15,3 +14,7 @@ services:
         value: 4320
       - key: WHATSAPP_API_KEY
         sync: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"

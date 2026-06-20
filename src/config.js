@@ -20,10 +20,17 @@ export const config = {
   // Backoff inicial (multiplica a cada falha)
   reconnectBaseDelayMs: parseInt(process.env.RECONNECT_BASE_DELAY_MS || "8000", 10),
   // Pasta da sessão WhatsApp (suporta SESSION_FOLDER para Railway)
-  sessionFolder: process.env.SESSION_FOLDER || "./data/session",
+  // Em produção (Railway/Render), use /data para persistência via volume
+  sessionFolder: process.env.SESSION_FOLDER || (process.env.NODE_ENV === "production" ? "/data/session" : "./data/session"),
+  // Pasta de autenticação do whatsapp-web.js (LocalAuth)
+  authFolder: process.env.AUTH_FOLDER || (process.env.NODE_ENV === "production" ? "/data/.wwebjs_auth" : "./data/.wwebjs_auth"),
   // Número máximo de contas simultâneas
   maxAccounts: parseInt(process.env.MAX_ACCOUNTS || "1", 10),
   corsOrigin: process.env.CORS_ORIGIN || "*",
+  // Rate limiting para envio de mensagens (evita ban)
+  rateLimit: {
+    maxPerMinute: parseInt(process.env.RATE_LIMIT_MAX_PER_MINUTE || "20", 10),
+  },
   // Stealth: proteção anti-bloqueio (desligado por padrão)
   stealth: {
     enabled: process.env.STEALTH_ENABLED === "true",

@@ -7,6 +7,21 @@ import { isStealthEnabled, setStealthEnabled } from "./runtime.js";
 
 const cfg = (obj, key, fallback) => (obj && obj[key] !== undefined ? obj[key] : fallback);
 
+// Cache puppeteer-extra with stealth plugin to avoid dynamic import on each call
+let _puppeteerExtra = null;
+async function getPuppeteerExtra() {
+  if (_puppeteerExtra) return _puppeteerExtra;
+  try {
+    const { default: puppeteerExtra } = await import("puppeteer-extra");
+    const { default: StealthPlugin } = await import("puppeteer-extra-plugin-stealth");
+    puppeteerExtra.use(StealthPlugin());
+    _puppeteerExtra = puppeteerExtra;
+  } catch (err) {
+    console.warn("[stealth] Falha ao carregar puppeteer-extra-plugin-stealth:", err.message);
+  }
+  return _puppeteerExtra;
+}
+
 export class Stealth {
   constructor(opts = {}, accountIndex = 0) {
     const runtimeOn = isStealthEnabled();
@@ -61,12 +76,9 @@ export class Stealth {
       res.args = args;
     }
     if (sp) {
-      try {
-        const { default: puppeteerExtra } = await import("puppeteer-extra");
-        const { default: StealthPlugin } = await import("puppeteer-extra-plugin-stealth");
-        puppeteerExtra.use(StealthPlugin());
+      const puppeteerExtra = await getPuppeteerExtra();
+      if (puppeteerExtra) {
         res.puppeteer = puppeteerExtra;
-      } catch {
       }
     }
     return res;

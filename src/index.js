@@ -39,14 +39,29 @@ whatsapp.initializeAll();
 
 // Graceful shutdown
 let shuttingDown = false;
-function shutdown(signal) {
+async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info(`Sinal ${signal} recebido, encerrando...`);
+  
+  // Stop accepting new connections
   server.close(() => log.info("HTTP server fechado"));
+  
+  // Drain queue workers (wait for in-flight messages)
+  log.info("Aguardando finalização dos workers da fila...");
+  await whatsapp.drainAllQueues();
+  
+  // Destroy WhatsApp clients
   whatsapp.destroy();
+  
+  // Close database
   closeDb();
-  setTimeout(() => process.exit(0), 10000).unref();
+  
+  // Force exit after 15s
+  setTimeout(() => {
+    log.warn("Shutdown timeout atingido, forçando saída");
+    process.exit(0);
+  }, 15000).unref();
 }
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));

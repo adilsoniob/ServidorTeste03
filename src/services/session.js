@@ -28,13 +28,18 @@ const PUPPETEER_ARGS = [
   "--mute-audio",
 ];
 
-const withTimeout = (promise, ms, label) =>
-  Promise.race([
+const withTimeout = (promise, ms, label) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timeout após ${ms}ms`)), ms);
+  });
+  return Promise.race([
     promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timeout após ${ms}ms`)), ms)
-    ),
-  ]);
+    timeoutPromise,
+  ]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+};
 
 export class WhatsAppSession {
   constructor(index, io, storage, config) {
@@ -58,7 +63,10 @@ export class WhatsAppSession {
     this._processingQueue = false;
     this._queueWorkerTimer = null;
     this._queueProcessing = false;
-    this.rate = { maxPerMinute: 5, intervalMs: 6000, sent: [], lastSend: 0 };
+    // Rate limit configurável (padrão 20 msg/min para evitar ban)
+    const maxPerMinute = config.rateLimit?.maxPerMinute ?? 20;
+    const intervalMs = Math.floor(60000 / maxPerMinute);
+    this.rate = { maxPerMinute, intervalMs, sent: [], lastSend: 0 };
     this.stealth = new Stealth(config.stealth, this.index);
   }
 
@@ -207,17 +215,19 @@ export class WhatsAppSession {
     if (this._queueProcessing || !this.isReady() || this._destroyed) return;
     if (!this.stealth.multi.isHealthy()) return;
     if (this.stealth.enabled && !this.stealth.scheduler.isWithinBusinessHours()) return;
+    
+    // Rate limiting check
+    const now = Date.now();
+    const recent = this.rate.sent.filter((t) => now - t < 60000);
+    if (recent.length >= this.rate.maxPerMinute) {
+      return;
+    }
+
     this._queueProcessing = true;
     try {
-      const now = Date.now();
-      const recent = this.rate.sent.filter((t) => now - t < 60000);
-      if (recent.length >= this.rate.maxPerMinute) {
-        const oldest = recent[0] || 0;
-        const wait = 60000 - (now - oldest);
-        if (wait > 1000) return;
-      }
       const items = await queue.dequeue(1, this.index);
       for (const item of items) {
+        if (this._destroyed || !this.isReady()) break;
         await this.sendFromQueue(item.id, item.phone, item.message);
       }
     } catch (err) {
@@ -229,16 +239,40 @@ export class WhatsAppSession {
 
   _startQueueWorker() {
     if (this._queueWorkerTimer) return;
-    const POLL_INTERVAL = 3000;
+    const POLL_INTERVAL = 5000; // Increased from 3000 to reduce DB load
     this._queueWorkerTimer = setInterval(() => this._tryDequeue(), POLL_INTERVAL);
     this._tryDequeue();
-    log.info(`[${this.accountLabel}] Worker da fila iniciado (polling a cada ${POLL_INTERVAL}ms)`);
+    log.info(`[${this.accountLabel}] Worker da fila iniciado (polling a cada ${POLL_INTERVAL}ms, rate: ${this.rate.maxPerMinute}/min)`);
   }
 
-  _stopQueueWorker() {
+  async _stopQueueWorker() {
     if (this._queueWorkerTimer) {
       clearInterval(this._queueWorkerTimer);
       this._queueWorkerTimer = null;
+    }
+    // Wait for current processing to finish (max 30s)
+    const start = Date.now();
+    while (this._queueProcessing && Date.now() - start < 30000) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (this._queueProcessing) {
+      log.warn(`[${this.accountLabel}] Queue worker não finalizou a tempo no shutdown`);
+    }
+  }
+
+  async drainQueue() {
+    // Process remaining items in memory queue
+    while (this._msgQueue.length > 0) {
+      await this._processQueue();
+      await new Promise(r => setTimeout(r, 100));
+    }
+    // Try to process pending queue items from DB
+    while (this.isReady() && !this._destroyed) {
+      const items = await queue.dequeue(1, this.index);
+      if (!items.length) break;
+      for (const item of items) {
+        await this.sendFromQueue(item.id, item.phone, item.message);
+      }
     }
   }
 
@@ -307,7 +341,7 @@ export class WhatsAppSession {
     return new Client({
       authStrategy: new LocalAuth({
         clientId: this.config.clientId + "-" + this.index,
-        dataPath: "./data/.wwebjs_auth",
+        dataPath: this.config.authFolder,
       }),
       puppeteer: cfg,
     });
@@ -462,7 +496,7 @@ export class WhatsAppSession {
       try {
         const fs = await import("node:fs");
         const path = await import("node:path");
-        const authDir = path.join(process.cwd(), "data", ".wwebjs_auth", `session-${this.config.clientId}-${this.index}`);
+        const authDir = path.join(this.config.authFolder, `session-${this.config.clientId}-${this.index}`);
         if (fs.existsSync(authDir)) {
           fs.rmSync(authDir, { recursive: true, force: true });
           log.info(`[${this.accountLabel}] Pasta de autenticação removida`);
