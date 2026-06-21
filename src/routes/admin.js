@@ -39,7 +39,8 @@ export function createAdminRouter(whatsapp, authMiddleware) {
   const storage = whatsapp.storage;
 
   if (authMiddleware) {
-    router.use(authMiddleware);
+    // Aplica auth SOMENTE nas rotas /api/admin/* — a pagina /admin fica publica
+    router.use("/api/admin", authMiddleware);
   }
 
   // ---- Status ----

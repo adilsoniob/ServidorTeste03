@@ -26,6 +26,16 @@ const PUPPETEER_ARGS = [
   "--no-zygote",
   "--disable-gpu",
   "--mute-audio",
+  "--disable-extensions",
+  "--disable-background-networking",
+  "--disable-component-update",
+  "--disable-sync",
+  "--disable-default-apps",
+  "--disable-background-timer-throttling",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-renderer-backgrounding",
+  "--hide-scrollbars",
+  "--metrics-recording-only",
 ];
 
 const withTimeout = (promise, ms, label) => {

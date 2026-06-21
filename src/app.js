@@ -25,12 +25,14 @@ export function createApp(whatsapp) {
 
   const tracker = trackerMiddleware(whatsapp);
 
-  // Admin + monitoring API (autenticada)
-  app.use("/", createAdminRouter(whatsapp, authMiddleware));
+  // Health check MUST be first — Railway healthcheck nao pode ser bloqueado por auth
+  app.use("/health", healthRouter);
 
   // Public routes
   app.use("/", qrPageRouter);
-  app.use("/health", healthRouter);
+
+  // Admin + monitoring API (autenticada)
+  app.use("/", createAdminRouter(whatsapp, authMiddleware));
   app.use("/api/whatsapp/status", statusRouter);
 
   // Autenticated routes (com tracker)
